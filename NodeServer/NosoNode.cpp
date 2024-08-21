@@ -2,6 +2,8 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include "networking.h"
+#include <fstream>
+#include <string>
 
 using boost::asio::ip::tcp;
 
@@ -51,9 +53,10 @@ public:
 
     void Initialize() {
         std::cout << "Initializing Node" << std::endl;
-        UpdateSeedTestnetIpServers();
-
-        // Step 1: Get Seed nodes IP from DNS and save to a vector (Seed Vector)
+        CheckConfigFiles();
+        UpdateSeedTestnetIpServers(); // Step 1: Get Seed nodes IP from DNS and save to a vector (Seed Vector) and Testnet Vector.
+        CheckNosoBlocks();
+        
         // Step 2: Get all Nodes IP from Seed Nodes and save to a vector (Node Vector)
     }
 
@@ -61,6 +64,43 @@ private:
     std::vector<std::string> SeedIpAddresses;
     std::vector<std::string> TestnetSeedIpAddresses;
 
+    void CheckConfigFiles()
+    {
+        std::cout << "Checking Config files " << std::endl;
+        const std::string config_filename = "server.cfg";
+
+        std::ifstream config_file(config_filename);
+
+        if (config_file.good()) {
+            // If the file exists do not create or modify
+            std::cout << "Config file '" << config_filename << "' exists." << std::endl;
+        }
+        else {
+            // If config file is not present, create default one and add default values
+            std::ofstream new_config_file(config_filename);
+            if (new_config_file.is_open()) {
+                new_config_file << "Port 8080" << std::endl;
+                new_config_file.close();
+                std::cout << "Config file '" << config_filename << "' created with default port 8080." << std::endl;
+            }
+            else {
+                std::cerr << "Error: Unable to create config file '" << config_filename << "'." << std::endl;
+            }
+        }
+
+
+    }
+    
+    
+    void CheckNosoBlocks()
+    {
+        std::cout << "Checking Node BLocks "  << std::endl;
+
+
+
+    }
+    
+    
     void UpdateSeedTestnetIpServers() {
         std::string SeedServersDNS = "seed.nosocoin.com";
         std::string TestnetServersDNS = "testnet.nosocoin.com";
@@ -111,7 +151,7 @@ int main() {
         boost::asio::io_context io_context;
 
         Server server(io_context, 12345);
-        server.Initialize();
+        server.Initialize(); //Start doing server initial checks and setup before going online.
         io_context.run();
 
     }
