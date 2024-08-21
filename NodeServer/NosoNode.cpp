@@ -53,7 +53,7 @@ public:
 
     void Initialize() {
         std::cout << "Initializing Node" << std::endl;
-        CheckConfigFiles();
+        //CheckConfigFiles(); // Something to check !
         UpdateSeedTestnetIpServers(); // Step 1: Get Seed nodes IP from DNS and save to a vector (Seed Vector) and Testnet Vector.
         CheckNosoBlocks();
         
@@ -66,6 +66,7 @@ private:
 
     void CheckConfigFiles()
     {
+        // Change config test, now is TCP PORT, but it's not needed as is checked before starting Server.
         std::cout << "Checking Config files " << std::endl;
         const std::string config_filename = "server.cfg";
 
@@ -102,6 +103,7 @@ private:
     
     
     void UpdateSeedTestnetIpServers() {
+
         std::string SeedServersDNS = "seed.nosocoin.com";
         std::string TestnetServersDNS = "testnet.nosocoin.com";
 
@@ -168,11 +170,25 @@ int main(int argc, char* argv[]) {
         boost::asio::io_context io_context;
         // Default port 
         short port = 8080;
+        short testnetPort = 4041;
+        bool UseTestnet = false;
+        
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "-t" ) {
+                UseTestnet = true;
+                std::cout << "**** TESTNET ***** Default Port 4040 " << std::endl;
+                break;
+                ////Pending Implementation.
+            }
+        }
+        
+        
+        //Print Help.
         
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "-h" || std::string(argv[i]) == "/h" || std::string(argv[i]) == "-?") {
                 show_help();
-                return 0; // Salir después de mostrar la ayuda
+                return 0;
             }
         }
        
@@ -185,11 +201,24 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        CheckConfigFiles();
-        std::cout << "Starting Server on Port " << port << std::endl;
-        Server server(io_context, port);
-        server.Initialize(); // Start doing server initial checks and setup before going online.
-        io_context.run();
+        //CheckConfigFiles();
+        
+        if (UseTestnet==false)
+        {
+            std::cout << "Starting Server on Port " << port << std::endl;
+            Server server(io_context, port);
+            server.Initialize(); // Start doing server initial checks and setup before going online.
+            io_context.run();
+        }
+        else 
+        {
+            std::cout << "Starting Server on TESTNET Port " << testnetPort << std::endl;
+            Server server(io_context, testnetPort);
+            server.Initialize(); // Start doing server initial checks and setup before going online.
+            io_context.run();
+        }
+      
+        
     }
     catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
