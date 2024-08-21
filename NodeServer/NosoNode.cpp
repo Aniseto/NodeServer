@@ -145,15 +145,51 @@ private:
     tcp::acceptor acceptor_;
     int session_counter_;  // Counter to generate unique session IDs
 };
+void CheckConfigFiles()
+{
+    //check server.cfg file
+    //check TCP port to be used by Server to listen, or use 8080 by default.
 
-int main() {
+
+
+
+}
+
+void show_help() {
+    std::cout << "Usage: NodeServer [options]\n"
+        << "Options:\n"
+        << "  -h, /h or -?         Show this help message and exit\n"
+        << "  -p <port>      Specify the port number to use (default: 8081)\n"
+        << std::endl;
+}
+
+int main(int argc, char* argv[]) {
     try {
         boost::asio::io_context io_context;
+        // Default port 
+        short port = 8080;
+        
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "-h" || std::string(argv[i]) == "/h" || std::string(argv[i]) == "-?") {
+                show_help();
+                return 0; // Salir después de mostrar la ayuda
+            }
+        }
+       
 
-        Server server(io_context, 12345);
-        server.Initialize(); //Start doing server initial checks and setup before going online.
+        // Check command arguments if -p parámeter is present
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "-p" && i + 1 < argc) {
+                port = static_cast<short>(std::stoi(argv[++i]));
+                break;
+            }
+        }
+
+        CheckConfigFiles();
+        std::cout << "Starting Server on Port " << port << std::endl;
+        Server server(io_context, port);
+        server.Initialize(); // Start doing server initial checks and setup before going online.
         io_context.run();
-
     }
     catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
