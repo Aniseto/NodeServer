@@ -47,6 +47,7 @@ private:
 };
 
 class Server {
+    int LastBlock = 0;
 public:
     Server(boost::asio::io_context& io_context, short port)
         : acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), session_counter_(10000) {
@@ -57,6 +58,7 @@ public:
         std::cout << "Initializing Node" << std::endl;
         //CheckConfigFiles(); // Something to check !
         UpdateSeedTestnetIpServers(); // Step 1: Get Seed nodes IP from DNS and save to a vector (Seed Vector) and Testnet Vector.
+        ConnectToSeedServers();
         CheckNosoBlocks();
         
         // Step 2: Get all Nodes IP from Seed Nodes and save to a vector (Node Vector)
@@ -66,6 +68,15 @@ private:
     std::vector<std::string> SeedIpAddresses;
     std::vector<std::string> TestnetSeedIpAddresses;
 
+    void ConnectToSeedServers()
+    {
+        //Create a Vector of Connections to save all connections. SHared ?
+        //Connect to all Seed servers from SeedIpAddresses or TestnetSeedIpAddresses.
+        //Present to all Seed servers and maintain connection with AO ( PING PONG ).
+        //Allow using each connection to send requests in future.
+
+    }
+    
     void CheckConfigFiles()
     {
         // Change config test, now is TCP PORT, but it's not needed as is checked before starting Server.
@@ -97,6 +108,7 @@ private:
     
     void CheckNosoBlocks()
     {
+        //int LastBlock = 0;
         std::cout << "Checking Node BLocks "  << std::endl;
         // Check local directory /NOSODATA/BLOCKS
         // Check blocks.chk and read last block
@@ -133,6 +145,7 @@ private:
                 outfile << "0";
                 outfile.close();
                 std::cout << "File blocks.chk created with value 0." << std::endl;
+             
             }
             else {
                 std::cerr << "Error: Could not create file blocks.chk." << std::endl;
@@ -143,6 +156,35 @@ private:
           
         }
 
+        std::ifstream infile(blocks_chk_file);
+        if (infile.is_open()) {
+            infile >> LastBlock;
+            std::cout << "Loaded LastBlock value: " << LastBlock << std::endl;
+        }
+        else {
+            std::cerr << "Error: Could not open file blocks.chk for reading." << std::endl;
+        }
+
+        if (LastBlock == 0)
+        {
+            // Open AO Connection to all Seed Servers, Send presentation string and then $LASTBLOCK command to download.
+            // Create a Vector with Seed Node Connections ? //Connect to Seed Servers ?
+            // Use SeedIpAddresses or TestnetSeedIpAdresses vector.
+            // std::vector<std::string> SeedIpAddresses;
+            // std::vector<std::string> TestnetSeedIpAddresses;
+            // If LastBLock = 0, full download, connect to several seed servers to balance download from the Seed Vector or Testnet Vector if using tesnet ?
+            // Select from Seed Servers, and open connection to spread download , checking how many seed servers on vector, and send 100 packages divided by seed 
+            // server, every time a packge is downloaded, un zip all .blk files and check headers to validate this block, update block.chk with blocks validated.
+            // Store all blocks on NOSODATA/BLOCKS and update Last Block variable.
+
+            // If Lastblock !=0, check what blocks are needed to download, in 100 packs.
+        }
+        else
+        {
+            //Logic to download specific blocks.
+
+
+        }
     }
     
     
@@ -211,6 +253,8 @@ void show_help() {
 }
 
 int main(int argc, char* argv[]) {
+    
+   
     try {
         boost::asio::io_context io_context;
         // Default port 
