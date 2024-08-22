@@ -9,6 +9,74 @@
 
 using boost::asio::ip::tcp;
 
+using boost::asio::ip::tcp;
+
+class SeedConnection : public std::enable_shared_from_this<SeedConnection> {
+public:
+    SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip, const std::string& psk)
+        : socket_(io_context), server_ip_(server_ip), psk_(psk) {}
+
+    void start() {
+        auto self(shared_from_this());
+        tcp::resolver resolver(socket_.get_executor());
+        auto endpoints = resolver.resolve(server_ip_, "8080");  // Assuming port 8080 for simplicity
+        boost::asio::async_connect(socket_, endpoints,
+            [this, self](boost::system::error_code ec, tcp::endpoint) {
+                if (!ec) {
+                    std::cout << "Connected to " << server_ip_ << std::endl;
+                    do_write(psk_);  // Send the PSK
+                }
+                else {
+                    std::cerr << "Error connecting to " << server_ip_ << ": " << ec.message() << std::endl;
+                }
+            });
+    }
+
+private:
+    void do_write(const std::string& message) {
+        auto self(shared_from_this());
+        boost::asio::async_write(socket_, boost::asio::buffer(message),
+            [this, self](boost::system::error_code ec, std::size_t /*length*/) {
+                if (!ec) {
+                    do_read();  // Start reading after writing
+                }
+                else {
+                    std::cerr << "Error sending message to " << server_ip_ << ": " << ec.message() << std::endl;
+                }
+            });
+    }
+
+    void do_read() {
+        auto self(shared_from_this());
+        boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), "\n",
+            [this, self](boost::system::error_code ec, std::size_t length) {
+                if (!ec) {
+                    std::string response(data_.substr(0, length));
+                    data_.erase(0, length);
+
+                    std::cout << "Received from " << server_ip_ << ": " << response << std::endl;
+
+                    if (response == "$PING\n") {
+                        do_write("$PONG\n");  // Respond with $PONG if $PING is received
+                    }
+                    else {
+                        do_read();  // Keep reading for further messages
+                    }
+                }
+                else {
+                    std::cerr << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
+                }
+            });
+    }
+
+    tcp::socket socket_;
+    std::string server_ip_;
+    std::string psk_;
+    std::string data_;
+};
+
+
+
 class Session : public std::enable_shared_from_this<Session> {
 public:
     Session(tcp::socket socket, int session_id)
