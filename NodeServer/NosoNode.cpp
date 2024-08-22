@@ -4,6 +4,8 @@
 #include "networking.h"
 #include <fstream>
 #include <string>
+#include <fstream>
+#include <filesystem>
 
 using boost::asio::ip::tcp;
 
@@ -96,8 +98,50 @@ private:
     void CheckNosoBlocks()
     {
         std::cout << "Checking Node BLocks "  << std::endl;
+        // Check local directory /NOSODATA/BLOCKS
+        // Check blocks.chk and read last block
+        // Calculate pending Blocks to Download
+        // Connect to Seed Node and Download Blocks
+        // Verify Blocks and update block.chk.
 
+        //Step 1: Check NOSODATA/BLOCKS and block.chk file
+            // Path to the NOSODATA/BLOCKS directory
+        const std::filesystem::path noso_data_dir = "NOSODATA/BLOCKS";
+        const std::filesystem::path blocks_chk_file = noso_data_dir / "blocks.chk";
 
+        // Check if the directory NOSODATA/BLOCKS exists
+        if (!std::filesystem::exists(noso_data_dir)) {
+            // Directory doesn't exist, create it
+            std::cout << "Directory NOSODATA/BLOCKS does not exist. Creating it..." << std::endl;
+            if (std::filesystem::create_directories(noso_data_dir)) {
+                std::cout << "Directory NOSODATA/BLOCKS created successfully." << std::endl;
+            }
+            else {
+                std::cerr << "Error: Could not create directory NOSODATA/BLOCKS." << std::endl;
+                return;
+            }
+        }
+        else {
+            std::cout << "Directory NOSODATA/BLOCKS already exists." << std::endl;
+        }
+
+        // Check if the file blocks.chk exists
+        if (!std::filesystem::exists(blocks_chk_file)) {
+            // File doesn't exist, create it with value 0
+            std::ofstream outfile(blocks_chk_file);
+            if (outfile.is_open()) {
+                outfile << "0";
+                outfile.close();
+                std::cout << "File blocks.chk created with value 0." << std::endl;
+            }
+            else {
+                std::cerr << "Error: Could not create file blocks.chk." << std::endl;
+            }
+        }
+        else {
+            std::cout << "File blocks.chk already exists, loading data to LastBlock." << std::endl;
+          
+        }
 
     }
     
@@ -161,7 +205,8 @@ void show_help() {
     std::cout << "Usage: NodeServer [options]\n"
         << "Options:\n"
         << "  -h, /h or -?         Show this help message and exit\n"
-        << "  -p <port>      Specify the port number to use (default: 8081)\n"
+        << "  -p <port>            Specify the port number to use (default: 8081)\n"
+        << "  -t                   Connect to Testnet\n"
         << std::endl;
 }
 
@@ -172,6 +217,7 @@ int main(int argc, char* argv[]) {
         short port = 8080;
         short testnetPort = 4041;
         bool UseTestnet = false;
+        //int LastBlock = 0;
         
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "-t" ) {
