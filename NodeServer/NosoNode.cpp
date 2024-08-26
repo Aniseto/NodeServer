@@ -46,7 +46,7 @@ private:
             std::to_string(utc_time) + " $PING " +
             "1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 " +
             "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
-            "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8\n";
+            "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8";
     }
 
     std::string Get_Pong_Message() {
@@ -59,7 +59,7 @@ private:
             std::to_string(utc_time) + " $PONG " +
             "1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 " +
             "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
-            "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8\n";
+            "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8";
     }
     
     
@@ -88,27 +88,34 @@ private:
         boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), "\n",
             [this, self](boost::system::error_code ec, std::size_t length) {
                 if (!ec) {
-                    // Extract the response and handle the message safely
                     std::string response(data_.substr(0, length));
                     data_.erase(0, length);
 
                     std::cout << "Received from " << server_ip_ << ": " << response << std::endl;
 
-                    // Check if the response contains $PING
                     if (response.find("$PING") != std::string::npos) {
                         std::cout << "PING received. Sending PONG..." << std::endl;
-                        do_write(Get_Pong_Message());  // Respond with $PONG if $PING is received
+                        do_write(Get_Pong_Message());
+                    }
+                    else if (response.find("$PONG") != std::string::npos) {
+                        std::cout << "PONG received. Sending PING..." << std::endl;
+                        do_write(Get_Ping_Message());
                     }
                     else {
-                        // If no PING is found, continue listening for more messages
+                        std::cout << "Unknown response. Continuing to read..." << std::endl;
                         do_read();
                     }
+                }
+                else if (ec == boost::asio::error::eof) {
+                    std::cout << "Connection closed by peer: " << server_ip_ << std::endl;
                 }
                 else {
                     std::cout << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
                 }
             });
     }
+
+
 
 
 
@@ -410,7 +417,7 @@ int main(int argc, char* argv[]) {
             std::cout << "Starting Server on Port " << port << std::endl;
             Server server(io_context, port);
             server.Initialize(); // Start doing server initial checks and setup before going online.
-            auto connection = std::make_shared<SeedConnection>(io_context, "4.233.61.8");
+            auto connection = std::make_shared<SeedConnection>(io_context, "20.199.50.27");
             connection->start();  //Test Connection
             io_context.run();
             
