@@ -7,14 +7,14 @@
 #include <fstream>
 #include <filesystem>
 
-using boost::asio::ip::tcp;
+
 
 using boost::asio::ip::tcp;
 
 class SeedConnection : public std::enable_shared_from_this<SeedConnection> {
 public:
-    SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip, const std::string& psk)
-        : socket_(io_context), server_ip_(server_ip), psk_(psk) {}
+    SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip)
+        : socket_(io_context), server_ip_(server_ip) {}
 
     void start() {
         auto self(shared_from_this());
@@ -24,55 +24,102 @@ public:
             [this, self](boost::system::error_code ec, tcp::endpoint) {
                 if (!ec) {
                     std::cout << "Connected to " << server_ip_ << std::endl;
-                    do_write(psk_);  // Send the PSK
+                    //do_read();
+                    do_write(Get_Ping_Message());  // Send the PSK ************************************** Need to calculate PING message before.
+                    //do_read();
                 }
                 else {
-                    std::cerr << "Error connecting to " << server_ip_ << ": " << ec.message() << std::endl;
+                    std::cout << "Error connecting to " << server_ip_ << ": " << ec.message() << std::endl;
                 }
             });
     }
 
 private:
+    
+    std::string Get_Ping_Message() {
+        //std::string protocol = "PSK";
+        //int version = 2;
+        //std::string mainnet_version = "4.3d";
+        std::time_t utc_time = std::time(nullptr);
+
+        return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
+            std::to_string(utc_time) + " $PING " +
+            "1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 " +
+            "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
+            "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8\n";
+    }
+
+    std::string Get_Pong_Message() {
+        //string protocol = "PSK";
+        //int version = 2;
+        //string mainnet_version = "4.3d";
+        std::time_t utc_time = std::time(nullptr);
+
+        return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
+            std::to_string(utc_time) + " $PONG " +
+            "1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 " +
+            "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
+            "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8\n";
+    }
+    
+    
     void do_write(const std::string& message) {
         auto self(shared_from_this());
-        boost::asio::async_write(socket_, boost::asio::buffer(message),
-            [this, self](boost::system::error_code ec, std::size_t /*length*/) {
+        auto buffer = std::make_shared<std::string>(message);  // Mantén el buffer vivo durante la operación
+
+        std::cout << "Sending: " << *buffer << std::endl;
+
+        boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
+            [this, self, buffer](boost::system::error_code ec, std::size_t /*length*/) {
                 if (!ec) {
+                    std::cout << "Message sent successfully." << std::endl;
                     do_read();  // Start reading after writing
                 }
                 else {
-                    std::cerr << "Error sending message to " << server_ip_ << ": " << ec.message() << std::endl;
+                    std::cout << "Error sending message to " << server_ip_ << ": " << ec.message() << std::endl;
+                    socket_.close();  // Close socket on error
                 }
             });
     }
+
 
     void do_read() {
         auto self(shared_from_this());
         boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), "\n",
             [this, self](boost::system::error_code ec, std::size_t length) {
                 if (!ec) {
+                    // Extract the response and handle the message safely
                     std::string response(data_.substr(0, length));
                     data_.erase(0, length);
 
                     std::cout << "Received from " << server_ip_ << ": " << response << std::endl;
 
-                    if (response == "$PING\n") {
-                        do_write("$PONG\n");  // Respond with $PONG if $PING is received
+                    // Check if the response contains $PING
+                    if (response.find("$PING") != std::string::npos) {
+                        std::cout << "PING received. Sending PONG..." << std::endl;
+                        do_write(Get_Pong_Message());  // Respond with $PONG if $PING is received
                     }
                     else {
-                        do_read();  // Keep reading for further messages
+                        // If no PING is found, continue listening for more messages
+                        do_read();
                     }
                 }
                 else {
-                    std::cerr << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
+                    std::cout << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
                 }
             });
     }
+
+
+
 
     tcp::socket socket_;
     std::string server_ip_;
     std::string psk_;
     std::string data_;
+    std::string protocol = "PSK";
+    int version = 2;
+    std::string mainnet_version = "4.3d";
 };
 
 
@@ -128,6 +175,7 @@ public:
         UpdateSeedTestnetIpServers(); // Step 1: Get Seed nodes IP from DNS and save to a vector (Seed Vector) and Testnet Vector.
         ConnectToSeedServers();
         CheckNosoBlocks();
+     
         
         // Step 2: Get all Nodes IP from Seed Nodes and save to a vector (Node Vector)
     }
@@ -138,11 +186,7 @@ private:
 
     void ConnectToSeedServers()
     {
-        //Create a Vector of Connections to save all connections. SHared ?
-        //Connect to all Seed servers from SeedIpAddresses or TestnetSeedIpAddresses.
-        //Present to all Seed servers and maintain connection with AO ( PING PONG ).
-        //Allow using each connection to send requests in future.
-
+        std::cout << "Calling Connect to Seed Servers ( not implemented )" << std::endl;
     }
     
     void CheckConfigFiles()
@@ -366,16 +410,20 @@ int main(int argc, char* argv[]) {
             std::cout << "Starting Server on Port " << port << std::endl;
             Server server(io_context, port);
             server.Initialize(); // Start doing server initial checks and setup before going online.
+            auto connection = std::make_shared<SeedConnection>(io_context, "4.233.61.8");
+            connection->start();  //Test Connection
             io_context.run();
+            
         }
         else 
         {
             std::cout << "Starting Server on TESTNET Port " << testnetPort << std::endl;
             Server server(io_context, testnetPort);
             server.Initialize(); // Start doing server initial checks and setup before going online.
+        
             io_context.run();
         }
-      
+  
         
     }
     catch (std::exception& e) {
