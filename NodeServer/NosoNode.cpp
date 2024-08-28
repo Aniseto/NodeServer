@@ -18,7 +18,8 @@ public:
    // SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip)
      //   : socket_(io_context), server_ip_(server_ip) {}
     SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip)
-        : socket_(io_context), server_ip_(server_ip), timer_(io_context) {}
+        : socket_(io_context), server_ip_(server_ip), timer_(io_context), is_writing_(false), is_processing_(false) {}
+
 
     void start() {
         auto self(shared_from_this());
@@ -28,9 +29,9 @@ public:
             [this, self](boost::system::error_code ec, tcp::endpoint) {
                 if (!ec) {
                     std::cout << "Connected to " << server_ip_ << std::endl;
-                    //start_ping_timer();
-                    do_write(Get_Ping_Message()); 
-               
+                    do_write(Get_Ping_Message());
+                    start_ping_timer(); // Start the timer to send $PING every 5 seconds
+                    do_read();  // Start reading from the server
                 }
                 else {
                     std::cout << "Error connecting to " << server_ip_ << ": " << ec.message() << std::endl;
@@ -38,23 +39,65 @@ public:
             });
     }
 
+
 private:
     
     
     void start_ping_timer() {
         auto self(shared_from_this());
-        timer_.expires_after(std::chrono::seconds(2));
-      
+
+        // Set the timer to expire after 5 seconds
+        timer_.expires_after(std::chrono::seconds(5));
+
         timer_.async_wait([this, self](boost::system::error_code ec) {
             if (!ec) {
-                do_write(Get_Presentation_Message());
-               
-                //start_ping_timer();  // Reprograma el temporizador para enviar el siguiente $PING
+                // Send a $PING message
                 do_write(Get_Ping_Message());
+
+                // Start reading after sending the message to process responses
+                do_read();
+
+                // Schedule the next ping
+                start_ping_timer();  // Recursive call to send the next ping
+            }
+            else {
+                std::cout << "Timer error: " << ec.message() << std::endl;
             }
             });
-        
     }
+
+
+
+    void process_incoming_message() {
+        if (incoming_message_queue_.empty() || is_processing_) {
+            return;
+        }
+
+        is_processing_ = true;
+        std::string message = incoming_message_queue_.front();
+        incoming_message_queue_.pop();
+
+        std::cout << "Processing message: " << message << std::endl;
+
+        if (message.find("$PING") != std::string::npos) {
+            std::cout << "PING received. Sending PONG..." << std::endl;
+            queue_message(Get_Pong_Message());  // Responder con $PONG si se recibe $PING
+        }
+        else if (message.find("$PONG") != std::string::npos) {
+            std::cout << "PONG received. Sending PING..." << std::endl;
+            queue_message(Get_Ping_Message());  // Responder con $PING si se recibe $PONG
+        }
+
+        is_processing_ = false;
+
+        if (!incoming_message_queue_.empty()) {
+            process_incoming_message();
+        }
+        else {
+            do_read();  // Continuar leyendo más mensajes
+        }
+    }
+
     void queue_message(const std::string& message) {
         bool write_in_progress = !message_queue_.empty();
         message_queue_.push(message);
@@ -69,11 +112,11 @@ private:
             return;
         }
         is_writing_ = true;
-        auto message = message_queue_.front() + "\n"; // Añadir '\n' al final del mensaje
+        auto message = message_queue_.front() +"\n"; // Añadir '\n' al final del mensaje
         auto buffer = std::make_shared<std::string>(message);
 
         boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
-            [this, self, buffer](boost::system::error_code ec, std::size_t /*length*/) {
+            [this, self, buffer](boost::system::error_code ec, std::size_t/*length*/) {
                 if (!ec) {
                     std::cout << "Message sent successfully -> " << *buffer << std::endl;
                     message_queue_.pop();
@@ -114,6 +157,7 @@ private:
             "1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 " +
             "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
             "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8";
+
     }
 
     std::string Get_Pong_Message() {
@@ -132,7 +176,7 @@ private:
     void do_write(const std::string& message) {
         queue_message(message);  // Send Message to Queue
     }
-
+    /*
     void do_read() {
         auto self(shared_from_this());
         boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), "\n",
@@ -142,25 +186,34 @@ private:
                     std::cout << "Raw response data: " << response << std::endl;
                     data_.erase(0, length);
 
-                    std::cout << "Received from " << server_ip_ << ": " << response << std::endl;
+                    incoming_message_queue_.push(response);  // Añadir mensaje a la cola
 
-                    if (response.find("$PING") != std::string::npos) {
-                        std::cout << "PING received. Sending PONG..." << std::endl;
-                        queue_message(Get_Pong_Message());  // Send $PONG is $PING received
-                    }
-                    else if (response.find("$PONG") != std::string::npos) {
-                        std::cout << "PONG received. " << std::endl;
-                        //queue_message(Get_Ping_Message());  // Send $PING ig Responder con $PING si se recibe $PONG
-                    }
-                    else {
-                        do_read();
-                    }
+                    process_incoming_message();  // Procesar mensajes de la cola
+
                 }
                 else {
                     std::cout << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
                 }
             });
     }
+    */
+    void do_read() {
+        auto self(shared_from_this());
+        auto buffer = std::make_shared<std::string>();
+        boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(*buffer), "\n",
+            [this, self, buffer](boost::system::error_code ec, std::size_t length) {
+                if (!ec) {
+                    std::string response = buffer->substr(0, length);
+                    std::cout << "Raw response data: " << response << std::endl;
+                    incoming_message_queue_.push(response);
+                    process_incoming_message();
+                }
+                else {
+                    std::cout << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
+                }
+            });
+    }
+
 
 
 
@@ -212,6 +265,8 @@ private:
     std::string mainet_version_test = "4.3d";
     std::queue<std::string> message_queue_;  // Message Queue
     bool is_writing_;  // Check if there is any message being writed
+    bool is_processing_; // Check if Incoming queue is being used
+    std::queue<std::string> incoming_message_queue_;
 
   
 };
@@ -504,7 +559,7 @@ int main(int argc, char* argv[]) {
             std::cout << "Starting Server on Port " << port << std::endl;
             Server server(io_context, port);
             server.Initialize(); // Start doing server initial checks and setup before going online.
-            auto connection = std::make_shared<SeedConnection>(io_context, "20.199.50.27"); //20.199.50.27  4.233.61.8
+            auto connection = std::make_shared<SeedConnection>(io_context, "4.233.61.8"); //20.199.50.27  4.233.61.8
             connection->start();  //Test Connection
             io_context.run();
             
