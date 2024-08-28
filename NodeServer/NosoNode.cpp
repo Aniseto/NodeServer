@@ -76,15 +76,16 @@ private:
         std::string message = incoming_message_queue_.front();
         incoming_message_queue_.pop();
 
-        std::cout << "Processing message: " << message << std::endl;
+        // Mostrar la IP de destino y el mensaje recibido
+        std::cout << "Processing message from " << server_ip_ << ": " << message << std::endl;
 
         if (message.find("$PING") != std::string::npos) {
-            std::cout << "PING received. Sending PONG..." << std::endl;
-            queue_message(Get_Pong_Message());  // Send $PONG
+            std::cout << "PING received from " << server_ip_ << ". Sending PONG..." << std::endl;
+            queue_message(Get_Pong_Message());  // Enviar $PONG si se recibe $PING
         }
         else if (message.find("$PONG") != std::string::npos) {
-            std::cout << "PONG received. Sending PING..." << std::endl;
-            queue_message(Get_Ping_Message());  // Send $PING
+            std::cout << "PONG received from " << server_ip_ << ". Sending PING..." << std::endl;
+            queue_message(Get_Ping_Message());  // Enviar $PING si se recibe $PONG
         }
 
         is_processing_ = false;
@@ -93,9 +94,10 @@ private:
             process_incoming_message();
         }
         else {
-            do_read();  // Continue reading messages
+            do_read();  // Continuar leyendo más mensajes
         }
     }
+
 
     void queue_message(const std::string& message) {
         bool write_in_progress = !message_queue_.empty();
@@ -117,7 +119,7 @@ private:
         boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
             [this, self, buffer](boost::system::error_code ec, std::size_t/*length*/) {
                 if (!ec) {
-                    std::cout << "Message sent successfully -> " << *buffer << std::endl;
+                    std::cout << "Message sent successfully to " << server_ip_ << " -> " << *buffer << std::endl;
                     message_queue_.pop();
                     if (!message_queue_.empty()) {
                         write_impl();
@@ -547,7 +549,11 @@ int main(int argc, char* argv[]) {
             Server server(io_context, port);
             server.Initialize(); // Start doing server initial checks and setup before going online.
             auto connection = std::make_shared<SeedConnection>(io_context, "4.233.61.8"); //20.199.50.27  4.233.61.8
-            connection->start();  //Test Connection
+            auto connection2 = std::make_shared<SeedConnection>(io_context, "20.199.50.27");
+            
+            
+            connection->start();
+            connection2->start();
             io_context.run();
             
         }
