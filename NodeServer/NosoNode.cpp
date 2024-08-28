@@ -186,7 +186,7 @@ private:
             [this, self, buffer](boost::system::error_code ec, std::size_t length) {
                 if (!ec) {
                     std::string response = buffer->substr(0, length);
-                    std::cout << "Raw response data: " << response << std::endl;
+                   // std::cout << "Raw response data: " << response << std::endl;   ////DEBUG 
                     incoming_message_queue_.push(response);
                     process_incoming_message();
                 }
@@ -210,8 +210,8 @@ private:
             std::string response(boost::asio::buffers_begin(buf.data()), boost::asio::buffers_begin(buf.data()) + n);
             buf.consume(n); // Elimina los datos del buffer
 
-            // **Añadir esta línea para depuración**
-            std::cout << "Raw response data: " << response << std::endl;
+            // **Añadir esta línea para depuración** 
+            //std::cout << "Raw response data: " << response << std::endl;    /////// RAW DEBUG MESSAGE
 
             if (response.find("$PING") != std::string::npos) {
                 std::cout << "PING received. Sending PONG..." << std::endl;
@@ -307,25 +307,26 @@ public:
         do_accept();
     }
 
-    void Initialize() {
+    void Initialize(boost::asio::io_context& io_context) {
         std::cout << "Initializing Node" << std::endl;
-        //CheckConfigFiles(); // Something to check !
-        UpdateSeedTestnetIpServers(); // Step 1: Get Seed nodes IP from DNS and save to a vector (Seed Vector) and Testnet Vector.
-        ConnectToSeedServers();
+        UpdateSeedTestnetIpServers();
+        ConnectToSeedServers(io_context); // Connect to all Seed Servers
         CheckNosoBlocks();
-     
-        
-        // Step 2: Get all Nodes IP from Seed Nodes and save to a vector (Node Vector)
     }
+
+    void ConnectToSeedServers(boost::asio::io_context& io_context) {
+        for (const auto& ip : SeedIpAddresses) {
+            auto connection = std::make_shared<SeedConnection>(io_context, ip);
+            connection->start();  // Start the connection for each IP
+        }
+    }
+
 
 private:
     std::vector<std::string> SeedIpAddresses;
     std::vector<std::string> TestnetSeedIpAddresses;
 
-    void ConnectToSeedServers()
-    {
-        std::cout << "Calling Connect to Seed Servers ( not implemented )" << std::endl;
-    }
+   
     
     void CheckConfigFiles()
     {
@@ -543,26 +544,16 @@ int main(int argc, char* argv[]) {
 
         //CheckConfigFiles();
         
-        if (UseTestnet==false)
-        {
+        if (!UseTestnet) {
             std::cout << "Starting Server on Port " << port << std::endl;
             Server server(io_context, port);
-            server.Initialize(); // Start doing server initial checks and setup before going online.
-            auto connection = std::make_shared<SeedConnection>(io_context, "4.233.61.8"); //20.199.50.27  4.233.61.8
-            auto connection2 = std::make_shared<SeedConnection>(io_context, "20.199.50.27");
-            
-            
-            connection->start();
-            connection2->start();
+            server.Initialize(io_context); // Start doing server initial checks and setup before going online.
             io_context.run();
-            
         }
-        else 
-        {
+        else {
             std::cout << "Starting Server on TESTNET Port " << testnetPort << std::endl;
             Server server(io_context, testnetPort);
-            server.Initialize(); // Start doing server initial checks and setup before going online.
-        
+            server.Initialize(io_context); // Start doing server initial checks and setup before going online.
             io_context.run();
         }
   
