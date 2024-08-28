@@ -255,7 +255,7 @@ public:
         : socket_(std::move(socket)), session_id_(session_id) {}
 
     void start() {
-        std::cout << "Session " << session_id_ << " started." << std::endl;
+        std::cout << "Session from External client" << session_id_ << " started." << std::endl;
         do_read();
     }
 
@@ -287,7 +287,7 @@ private:
 };
 
 class Server {
-    int LastBlock = 0;
+    int LastBlock = 0;  // Last BLock Validated by Server, checking blocks.chk ( dafault value 0 ).
 public:
     Server(boost::asio::io_context& io_context, short port)
         : acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), session_counter_(10000) {
@@ -348,6 +348,7 @@ private:
     {
         //int LastBlock = 0;
         std::cout << "Checking Node BLocks "  << std::endl;
+        //READ LastBlock Variable ?
         // Check local directory /NOSODATA/BLOCKS
         // Check blocks.chk and read last block
         // Calculate pending Blocks to Download
@@ -390,7 +391,7 @@ private:
             }
         }
         else {
-            std::cout << "File blocks.chk already exists, loading data to LastBlock." << std::endl;
+            std::cout << "File blocks.chk already exists, loading data to LastBlock: " << LastBlock << std::endl;
           
         }
 
@@ -424,7 +425,19 @@ private:
 
         }
     }
-    
+
+    void UpdateBlocksChkFile(int last_block) {  //Function to Update BLocks.chk with last block validated.
+        const std::filesystem::path blocks_chk_file = "NOSODATA/BLOCKS/blocks.chk";
+        std::ofstream outfile(blocks_chk_file);
+        if (outfile.is_open()) {
+            outfile << last_block;
+            outfile.close();
+            std::cout << "blocks.chk updated to LastBlock: " << last_block << std::endl;
+        }
+        else {
+            std::cerr << "Error: Could not update file blocks.chk." << std::endl;
+        }
+    }
     
     void UpdateSeedTestnetIpServers() {
 
