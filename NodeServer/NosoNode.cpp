@@ -102,15 +102,17 @@ private:
         incoming_message_queue_.pop();
 
         // Mostrar la IP de destino y el mensaje recibido
-        std::cout << "Processing message from " << server_ip_ << ": " << message << std::endl;
+        std::cout << "Processing message from " << server_ip_  << std::endl;
+
+        //**************DEBUG********************   std::cout << "Processing message from " << server_ip_ << ": " << message << std::endl;
 
         if (message.find("$PING") != std::string::npos) {
             std::cout << "PING received from " << server_ip_ << ". Sending PONG..." << std::endl;
             queue_message(Get_Pong_Message());  // Enviar $PONG si se recibe $PING
         }
         else if (message.find("$PONG") != std::string::npos) {
-            std::cout << "PONG received from " << server_ip_ << ". Sending PING..." << std::endl;
-            queue_message(Get_Ping_Message());  // Enviar $PING si se recibe $PONG
+            std::cout << "PONG received from " << server_ip_ << std::endl;
+            //queue_message(Get_Ping_Message());  // Enviar $PING si se recibe $PONG
         }
 
         is_processing_ = false;
@@ -144,7 +146,8 @@ private:
         boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
             [this, self, buffer](boost::system::error_code ec, std::size_t/*length*/) {
                 if (!ec) {
-                    std::cout << "Message sent successfully to " << server_ip_ << " -> " << *buffer << std::endl;
+                    std::cout << "Message sent successfully to " << server_ip_ << std::endl;
+                    //*********************** DEBUG std::cout << "Message sent successfully to " << server_ip_ << " -> " << *buffer << std::endl;
                     message_queue_.pop();
                     if (!message_queue_.empty()) {
                         write_impl();
