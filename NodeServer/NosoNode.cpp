@@ -6,7 +6,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
-#include <queue>  // Queue management.
+#include <queue>  
 
 
 
@@ -15,8 +15,7 @@ using boost::asio::ip::tcp;
 
 class SeedConnection : public std::enable_shared_from_this<SeedConnection> {
 public:
-   // SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip)
-     //   : socket_(io_context), server_ip_(server_ip) {}
+
     SeedConnection(boost::asio::io_context& io_context, const std::string& server_ip)
         : socket_(io_context), server_ip_(server_ip), timer_(io_context), is_writing_(false), is_processing_(false) {}
 
@@ -81,11 +80,11 @@ private:
 
         if (message.find("$PING") != std::string::npos) {
             std::cout << "PING received. Sending PONG..." << std::endl;
-            queue_message(Get_Pong_Message());  // Responder con $PONG si se recibe $PING
+            queue_message(Get_Pong_Message());  // Send $PONG
         }
         else if (message.find("$PONG") != std::string::npos) {
             std::cout << "PONG received. Sending PING..." << std::endl;
-            queue_message(Get_Ping_Message());  // Responder con $PING si se recibe $PONG
+            queue_message(Get_Ping_Message());  // Send $PING
         }
 
         is_processing_ = false;
@@ -94,7 +93,7 @@ private:
             process_incoming_message();
         }
         else {
-            do_read();  // Continuar leyendo más mensajes
+            do_read();  // Continue reading messages
         }
     }
 
@@ -112,7 +111,7 @@ private:
             return;
         }
         is_writing_ = true;
-        auto message = message_queue_.front() +"\n"; // Añadir '\n' al final del mensaje
+        auto message = message_queue_.front() +"\n"; // Ading \n to all messages
         auto buffer = std::make_shared<std::string>(message);
 
         boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
@@ -137,7 +136,8 @@ private:
     
     std::string Get_Presentation_Message()
     {
-       // PSK 173.249.18.228 0.4.2Da1 1659944140
+         // TO-DO
+         // Get Server Public IP.
 
         std::time_t utc_time = std::time(nullptr);
             return protocol + " " +"173.249.18.228" + " 0.4.2Da1" + " " +
@@ -147,10 +147,10 @@ private:
     
     std::string Get_Ping_Message() 
     {
-        std::string protocol = "PSK";
-        int version = 2;
-        std::string mainnet_version = "0.4.2Da1";
-        std::time_t utc_time = std::time(nullptr);
+        //std::string protocol = "PSK";
+        //int version = 2;
+        //std::string mainnet_version = "0.4.2Da1";
+        //std::time_t utc_time = std::time(nullptr);
 
         return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
             std::to_string(utc_time) + " $PING " +
@@ -161,10 +161,10 @@ private:
     }
 
     std::string Get_Pong_Message() {
-        std::string protocol = "PSK";
-        int version = 2;
-        std::string mainnet_version = "0.4.2Da1";
-        std::time_t utc_time = std::time(nullptr);
+        //std::string protocol = "PSK";
+        //int version = 2;
+        //std::string mainnet_version = "0.4.2Da1";
+        //std::time_t utc_time = std::time(nullptr);
 
         return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
             std::to_string(utc_time) + " $PONG " +
@@ -176,27 +176,7 @@ private:
     void do_write(const std::string& message) {
         queue_message(message);  // Send Message to Queue
     }
-    /*
-    void do_read() {
-        auto self(shared_from_this());
-        boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), "\n",
-            [this, self](boost::system::error_code ec, std::size_t length) {
-                if (!ec) {
-                    std::string response(data_.substr(0, length));
-                    std::cout << "Raw response data: " << response << std::endl;
-                    data_.erase(0, length);
 
-                    incoming_message_queue_.push(response);  // Añadir mensaje a la cola
-
-                    process_incoming_message();  // Procesar mensajes de la cola
-
-                }
-                else {
-                    std::cout << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
-                }
-            });
-    }
-    */
     void do_read() {
         auto self(shared_from_this());
         auto buffer = std::make_shared<std::string>();
@@ -254,19 +234,26 @@ private:
 
 
 
+    // Version information
+    std::string protocol = "PSK";
+    int version = 2;
+    std::string mainnet_version = "0.4.2Da1";
+    
+    //Time 
+    
+    std::time_t utc_time = std::time(nullptr);
+
     boost::asio::steady_timer timer_;
     tcp::socket socket_;
     std::string server_ip_;
     std::string psk_;
     std::string data_;
-    std::string protocol = "PSK";
-    int version = 2;
-    std::string mainnet_version = "0.4.2Da1";
-    std::string mainet_version_test = "4.3d";
+
     std::queue<std::string> message_queue_;  // Message Queue
     bool is_writing_;  // Check if there is any message being writed
     bool is_processing_; // Check if Incoming queue is being used
     std::queue<std::string> incoming_message_queue_;
+   
 
   
 };
