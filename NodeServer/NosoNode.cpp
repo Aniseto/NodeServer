@@ -177,10 +177,8 @@ private:
     
     std::string Get_Ping_Message() 
     {
-        //std::string protocol = "PSK";
-        //int version = 2;
-        //std::string mainnet_version = "0.4.2Da1";
-        //std::time_t utc_time = std::time(nullptr);
+        /*TO-DO
+            - Generate PING Message with real values*/
 
         return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
             std::to_string(utc_time) + " $PING " +
@@ -191,10 +189,8 @@ private:
     }
 
     std::string Get_Pong_Message() {
-        //std::string protocol = "PSK";
-        //int version = 2;
-        //std::string mainnet_version = "0.4.2Da1";
-        //std::time_t utc_time = std::time(nullptr);
+        /*TO-DO
+            - Generate PONG Message with real values*/
 
         return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
             std::to_string(utc_time) + " $PONG " +
@@ -224,44 +220,6 @@ private:
                 }
             });
     }
-
-
-
-
-    void do_read_sync() {
-        boost::asio::streambuf buf;
-        boost::system::error_code ec;
-
-        // Leer datos sincrónicamente hasta que se encuentre un '\n'
-        std::size_t n = boost::asio::read_until(socket_, buf, "\n", ec);
-
-        if (!ec) {
-            std::string response(boost::asio::buffers_begin(buf.data()), boost::asio::buffers_begin(buf.data()) + n);
-            buf.consume(n); // Elimina los datos del buffer
-
-            // **Añadir esta línea para depuración** 
-            //std::cout << "Raw response data: " << response << std::endl;    /////// RAW DEBUG MESSAGE
-
-            if (response.find("$PING") != std::string::npos) {
-                std::cout << "PING received. Sending PONG..." << std::endl;
-                do_write(Get_Pong_Message());  // Responder con $PONG si se recibe $PING
-            }
-            else if (response.find("$PONG") != std::string::npos) {
-                std::cout << "PONG received. Sending PING..." << std::endl;
-                do_write(Get_Ping_Message());  // Responder con $PING si se recibe $PONG
-            }
-            else {
-                // Si no se encuentra $PING ni $PONG, puedes seguir leyendo
-                do_read_sync();
-            }
-        }
-        else {
-            std::cout << "Error reading from " << server_ip_ << ": " << ec.message() << std::endl;
-        }
-    }
-
-
-
 
 
 
