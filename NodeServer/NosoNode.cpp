@@ -28,6 +28,7 @@ public:
             [this, self](boost::system::error_code ec, tcp::endpoint) {
                 if (!ec) {
                     std::cout << "Connected to " << server_ip_ << std::endl;
+                    SaveLogToFile("ConnectedIp.txt", server_ip_);
                     do_write(Get_Ping_Message());
                     start_ping_timer(); // Start the timer to send $PING every 5 seconds
                     do_read();  // Start reading from the server
@@ -37,7 +38,31 @@ public:
                 }
             });
     }
+    void SaveLogToFile(const std::string& filename, const std::string& ip) {
+        std::ifstream infile(filename);
+        std::string line;
+        bool found = false;
 
+        while (std::getline(infile, line)) {
+            if (line == ip) {
+                found = true;
+                break;
+            }
+        }
+
+        infile.close();
+
+        if (!found) {
+            std::ofstream outfile(filename, std::ios_base::app); // Open in append mode
+            if (outfile.is_open()) {
+                outfile << ip << std::endl;
+                outfile.close();
+            }
+            else {
+                std::cerr << "Error opening file " << filename << " for writing." << std::endl;
+            }
+        }
+    }
 
 private:
     
@@ -187,6 +212,7 @@ private:
                 if (!ec) {
                     std::string response = buffer->substr(0, length);
                    // std::cout << "Raw response data: " << response << std::endl;   ////DEBUG 
+                    SaveLogToFile("ReceivedIp.txt", server_ip_);
                     incoming_message_queue_.push(response);
                     process_incoming_message();
                 }
@@ -502,6 +528,8 @@ void show_help() {
         << "  -t                   Connect to Testnet\n"
         << std::endl;
 }
+
+
 
 int main(int argc, char* argv[]) {
     
