@@ -8,7 +8,17 @@
 #include <filesystem>
 #include <queue>  
 
+/*
+TO-DO
 
+- PING and PONG realtime generated, not static.
+- Download Blocks from nodes.
+- Calculate Consesus to validate nodes to be connected. (3 nodes, random, not always seed nodes)
+- Control Nodes Ping or reponse time to select the "best" ones.
+
+
+
+*/
 
 
 using boost::asio::ip::tcp;
@@ -146,8 +156,8 @@ private:
         boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
             [this, self, buffer](boost::system::error_code ec, std::size_t/*length*/) {
                 if (!ec) {
-                    std::cout << "Message sent successfully to " << server_ip_ << std::endl;
-                    //*********************** DEBUG std::cout << "Message sent successfully to " << server_ip_ << " -> " << *buffer << std::endl;
+                    //std::cout << "Message sent successfully to " << server_ip_ << std::endl;
+                    std::cout << "Message sent successfully to " << server_ip_ << " -> " << *buffer << std::endl;
                     message_queue_.pop();
                     if (!message_queue_.empty()) {
                         write_impl();
@@ -163,7 +173,7 @@ private:
                 }
             });
     }
-    
+   /*
     std::string Get_Presentation_Message()
     {
          // TO-DO
@@ -173,7 +183,57 @@ private:
             return protocol + " " +"173.249.18.228" + " 0.4.2Da1" + " " +
             std::to_string(utc_time);
     }
-    
+    */
+    std::string Get_Presentation_Message(const std::string& public_ip) {
+        std::time_t utc_time = std::time(nullptr);
+        return protocol + " " + public_ip + " " + mainnet_version + " " + std::to_string(utc_time);
+    }
+
+    std::string GetPublicIP() {
+        try {
+            boost::asio::io_context context;
+            boost::asio::ip::tcp::resolver resolver(context);
+            boost::asio::ip::tcp::resolver::query query("api.ipify.org", "80");
+            boost::asio::ip::tcp::resolver::iterator endpoints = resolver.resolve(query);
+
+            boost::asio::ip::tcp::socket socket(context);
+            boost::asio::connect(socket, endpoints);
+
+            const std::string request = "GET /?format=text HTTP/1.1\r\nHost: api.ipify.org\r\nConnection: close\r\n\r\n";
+            boost::asio::write(socket, boost::asio::buffer(request));
+
+            boost::asio::streambuf response;
+            boost::asio::read_until(socket, response, "\r\n");
+
+            std::istream response_stream(&response);
+            std::string http_version;
+            response_stream >> http_version;
+            unsigned int status_code;
+            response_stream >> status_code;
+
+            std::string status_message;
+            std::getline(response_stream, status_message);
+            if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
+                std::cerr << "Invalid response\n";
+                return "";
+            }
+
+            if (status_code != 200) {
+                std::cerr << "Response returned with status code " << status_code << "\n";
+                return "";
+            }
+
+            boost::asio::read_until(socket, response, "\r\n\r\n");
+
+            std::ostringstream oss;
+            oss << &response;
+            return oss.str();
+        }
+        catch (std::exception& e) {
+            std::cerr << "Exception: " << e.what() << "\n";
+            return "";
+        }
+    }
     
     std::string Get_Ping_Message() 
     {
