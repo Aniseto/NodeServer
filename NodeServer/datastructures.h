@@ -98,3 +98,109 @@ struct TSummaryData {
     int64_t LastOP;    // Last operation block
 };
 #pragma pack(pop)
+
+#pragma pack(push, 1)
+
+
+
+
+class WalletData {
+
+    // This structure is needed in order to allow read summary file fron Pascal Nodes, and maitain backguard compatibility.
+    // Can be improved using Strings in a future.
+
+private:
+    char Empty[1]; //Due pascal original file
+    char Hash[40]; // Public address HashEl hash publico o direccion
+    char Empty2[1]; //Due Pascal original file
+    char Custom[40]; // Custom Name
+    char Empty3[1];  //Due Pascal original file
+    char PublicKey[255]; // Public Key
+    char Empty4[1]; // Due pascal original file
+    char PrivateKey[255]; // Private Key
+    int64_t Balance; // Last balance from this address
+    int64_t Pending; // Last pending payment
+    int64_t Score; // Address status.
+    int64_t LastOP;// Time from the last operation in UnixTime Format
+public:
+    // Getter para obtener el valor de privateKey
+    std::string GetPrivateKey() {
+
+        return PrivateKey;
+    }
+    std::string GetPublicKey() {
+        return PublicKey;
+    }
+    std::string GetHash() {
+        return Hash;
+    }
+    std::string GetLabel() {
+        return Custom;
+    }
+    std::int64_t GetPending() {
+        return Pending;
+    }
+    std::int64_t GetBalance() {
+        return Balance;
+    }
+    //Setters
+    void SetPrivateKey(const std::string& privateKey) {
+
+        size_t copySize = std::min(privateKey.size(), sizeof(PrivateKey) - 1);
+
+        // Copiar los datos manualmente
+        for (size_t i = 0; i < copySize; ++i) {
+            PrivateKey[i] = privateKey[i];
+        }
+        PrivateKey[copySize] = '\0';
+    }
+    void SetPublicKey(const std::string& publicKey) {
+
+        size_t copySize = std::min(publicKey.size(), sizeof(PublicKey) - 1);
+
+        // Copiar los datos manualmente
+        for (size_t i = 0; i < copySize; ++i) {
+            PublicKey[i] = publicKey[i];
+        }
+        PublicKey[copySize] = '\0';
+    }
+    void SetHash(const std::string& hash) {
+
+        size_t copySize = std::min(hash.size(), sizeof(Hash) - 1);
+
+        // Copiar los datos manualmente
+        for (size_t i = 0; i < copySize; ++i) {
+            Hash[i] = hash[i];
+        }
+        Hash[copySize] = '\0';
+    }
+    void SetCustom(const std::string& custom) {
+
+        size_t copySize = std::min(custom.size(), sizeof(Custom) - 1);
+
+        // Copiar los datos manualmente
+        for (size_t i = 0; i < copySize; ++i) {
+            Custom[i] = custom[i];
+        }
+        Custom[copySize] = '\0';
+    }
+    void SetBalance(int64_t balance) {
+
+        Balance = balance;
+    }
+    void SetPending(int64_t pending) {
+
+        Pending = pending;
+    }
+    void SetScore(int64_t score) {
+
+        Score = score;
+    }
+    void SetLastOp(int64_t lastop) {
+
+        LastOP = lastop;
+    }
+
+
+};
+#pragma pack(pop)
