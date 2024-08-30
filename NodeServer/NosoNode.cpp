@@ -444,7 +444,7 @@ public:
         */
 
         //SetNodeStatus();
-    /*
+    /*/
         std::string Consensus = std::to_string(NodeStatus.GetBlockNumber()) + NodeStatus.GetHeaders().substr(0, 5) + NodeStatus.GetMNsHash().substr(0, 5) + NodeStatus.GetLastBlockHash().substr(0, 5) + NodeStatus.GetSummary().substr(0, 5) + NodeStatus.GetGVTHash().substr(0, 5) + NodeStatus.GetNosoCFG().substr(0, 5);
         // std::cout << "String to Hash : " << Consensus << std::endl;
         std::string MerkleTree = calculateMD5(Consensus);

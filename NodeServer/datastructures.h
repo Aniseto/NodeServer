@@ -80,8 +80,21 @@ public:
 
 
 
-    //Print Nodestatus String
+    
 
 
 
 };
+
+
+#pragma pack(push, 1)
+struct TSummaryData {
+    char empty[1];     // Added because sumary.psk fine is created by a Pascal app that adds an initial Char specifying Numer of Chars
+    char Hash[40];     // Public hash (including null terminator)
+    char empty2[1];    // Added because sumary.psk fine is created by a Pascal app that adds an initial Char specifying Numer of Chars
+    char Custom[40];   // Custom alias (including null terminator)
+    int64_t Balance;   // Noso balance
+    int64_t Score;     // Token balance
+    int64_t LastOP;    // Last operation block
+};
+#pragma pack(pop)

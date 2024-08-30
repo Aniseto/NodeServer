@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExternalIncludePath>C:\Libs\boost_1_86_0\boost_1_86_0;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>C:\Libs\Botan-3.5.0\Botan-3.5.0;C:\Libs\boost_1_86_0\boost_1_86_0;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
