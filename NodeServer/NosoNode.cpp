@@ -2,6 +2,7 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include "networking.h"
+#include "datastructures.h"
 #include <fstream>
 #include <string>
 #include <fstream>
@@ -15,6 +16,11 @@ TO-DO
 - Download Blocks from nodes.
 - Calculate Consesus to validate nodes to be connected. (3 nodes, random, not always seed nodes)
 - Control Nodes Ping or reponse time to select the "best" ones.
+- Generate NOSO address for Node.
+- GetLastBlock from Seed Server.
+- Get NosoCFG NSLMNS and NSLCFG
+- Calculate MarckleTree
+
 
 
 
@@ -73,6 +79,10 @@ public:
             }
         }
     }
+    
+ 
+
+
 
 private:
     
@@ -173,17 +183,7 @@ private:
                 }
             });
     }
-   /*
-    std::string Get_Presentation_Message()
-    {
-         // TO-DO
-         // Get Server Public IP.
-
-        std::time_t utc_time = std::time(nullptr);
-            return protocol + " " +"173.249.18.228" + " 0.4.2Da1" + " " +
-            std::to_string(utc_time);
-    }
-    */
+  
     std::string Get_Presentation_Message(const std::string& public_ip) {
         std::time_t utc_time = std::time(nullptr);
         return protocol + " " + public_ip + " " + mainnet_version + " " + std::to_string(utc_time);
@@ -238,19 +238,72 @@ private:
     std::string Get_Ping_Message() 
     {
         /*TO-DO
-            - Generate PING Message with real values*/
+            - Generate PING Message with real values
+            The string PSK
+The current protocol version 2: Integer
+The version of the software, 0.3.2Ab8 at this moment: String
+The current UTC Unix timestamp: Integer
+The string $PING: String
+The current amount of connections: Integer
+The current block number(Default: 0): Integer
+The current block hash(Default: 4E8A4743AA6083F3833DDA1216FE3717): String
+The hash of the NOSODATA/sumary.psk file(Default: D41D8CD98F00B204E9800998ECF8427E): String
+The amount of pending orders(Default: 0): Integer
+The hash of the NOSODATA/blchhead.nos file(Default: D41D8CD98F00B204E9800998ECF8427E ??): String
+Status of the connection: Integer
+0: Disconnected
+1: Connecting
+2: Connected
+3: Updated
+Connection port(Default: 8080): Integer
+First five characters of the hash of the NOSODATA/masternodes.txt file(Default: D41D8): String
+The amount of Master Nodes(Default: 0): Integer
+NMsData difference(Need to ask what this means)(Default: ??): String
+The amount of checked Master Nodes(Default: 0): Integer
+Hash of the NOSODATA/gvts.psk file(Default: D41D8CD98F00B204E9800998ECF8427E): String
+First five characters of the hash of the CFGs(Need to ask what this means)(Default: D41D8 ??): String
+4E8A4743AA6083F3833DDA1216FE3717 is the value of the hash for Block 0(zero).
+D41D8CD98F00B204E9800998ECF8427E is the value of md5 on an empty string.*/
 
         return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
             std::to_string(utc_time) + " $PING " +
             "1 0 4E8A4743AA6083F3833DDA1216FE3717 D41D8CD98F00B204E9800998ECF8427E 0 " +
             "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
             "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8";
-
+       
+        
+           
+        
     }
 
     std::string Get_Pong_Message() {
         /*TO-DO
-            - Generate PONG Message with real values*/
+            - Generate PONG Message with real values
+            The string PSK
+The current protocol version 2: Integer
+The version of the software, 0.3.2Ab8 at this moment: String
+The current UTC Unix timestamp: Integer
+The string $PONG: String
+The current amount of connections: Integer
+The current block number(Default: 0): Integer
+The current block hash(Default: 4E8A4743AA6083F3833DDA1216FE3717): String
+The hash of the NOSODATA/sumary.psk file(Default: D41D8CD98F00B204E9800998ECF8427E): String
+The amount of pending orders(Default: 0): Integer
+The hash of the NOSODATA/blchhead.nos file(Default: D41D8CD98F00B204E9800998ECF8427E ??): String
+Status of the connection: Integer
+0: Disconnected
+1: Connecting
+2: Connected
+3: Updated
+Connection port(Default: 8080): Integer
+First five characters of the hash of the NOSODATA/masternodes.txt file(Default: D41D8): String
+The amount of Master Nodes(Default: 0): Integer
+NMsData difference(Need to ask what this means)(Default: ??): String
+The amount of checked Master Nodes(Default: 0): Integer
+Hash of the NOSODATA/gvts.psk file(Default: D41D8CD98F00B204E9800998ECF8427E): String
+First five characters of the hash of the CFGs(Need to ask what this means)(Default: D41D8 ??): String
+4E8A4743AA6083F3833DDA1216FE3717 is the value of the hash for Block 0(zero).
+D41D8CD98F00B204E9800998ECF8427E is the value of md5 on an empty string.*/
 
         return protocol + " " + std::to_string(version) + " " + mainnet_version + " " +
             std::to_string(utc_time) + " $PONG " +
@@ -258,6 +311,11 @@ private:
             "D41D8CD98F00B204E9800998ECF8427E 0 8080 D41D8 0 " +
             "00000000000000000000000000000000 0 D41D8CD98F00B204E9800998ECF8427E D41D8";
     }
+    
+  
+
+   
+
     
     void do_write(const std::string& message) {
         queue_message(message);  // Send Message to Queue
@@ -347,7 +405,11 @@ private:
 };
 
 class Server {
+
     int LastBlock = 0;  // Last BLock Validated by Server, checking blocks.chk ( dafault value 0 ).
+    //int LastBlock = 0;  // Last BLock Validated by Server, checking blocks.chk (default value 0).
+    std::mutex mtx;  // Mutex to protect variables
+
 public:
     Server(boost::asio::io_context& io_context, short port)
         : acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), session_counter_(10000) {
@@ -360,6 +422,37 @@ public:
         ConnectToSeedServers(io_context); // Connect to all Seed Servers
         CheckNosoBlocks();
     }
+    /*
+    void CalculateMerkle()
+    {
+        /*
+        //NODESTATUS 1{Peers} 2{LastBlock} 3{Pendings} 4{Delta} 5{headers} 6{version} 7{UTCTime} 8{MNsHash}
+//           9{MNscount} 10{LasBlockHash} 11{BestHashDiff} 12{LastBlockTimeEnd} 13{LBMiner}
+//           14{ChecksCount} 15{LastBlockPoW} 16{LastBlockDiff} 17{summary} 18{GVTs} 19{nosoCFG}
+//           20{PSOHash}
+
+1
+[7:15 PM]
+2{LastBlock}
+5{headers}
+8{MNsHash}
+10{LasBlockHash}
+17{summary}
+18{GVTs}
+19{nosoCFG}
+
+        */
+
+        //SetNodeStatus();
+    /*
+        std::string Consensus = std::to_string(NodeStatus.GetBlockNumber()) + NodeStatus.GetHeaders().substr(0, 5) + NodeStatus.GetMNsHash().substr(0, 5) + NodeStatus.GetLastBlockHash().substr(0, 5) + NodeStatus.GetSummary().substr(0, 5) + NodeStatus.GetGVTHash().substr(0, 5) + NodeStatus.GetNosoCFG().substr(0, 5);
+        // std::cout << "String to Hash : " << Consensus << std::endl;
+        std::string MerkleTree = calculateMD5(Consensus);
+        this->MerkleTree = MerkleTree;
+        //std:: cout << "String to Hash : " << Consensus << std::endl;    
+       // std::cout << "MerkleTree: " << MerkleTree << std::endl;
+    }
+*/
 
     void ConnectToSeedServers(boost::asio::io_context& io_context) {
         for (const auto& ip : SeedIpAddresses) {
@@ -367,13 +460,27 @@ public:
             connection->start();  // Start the connection for each IP
         }
     }
+    // SetLastBlock securely using mutex.
 
+    void SetLastBlock(int lastBlock) {
+        std::lock_guard<std::mutex> lock(mtx);
+        LastBlock = lastBlock;
+    }
+
+    // GetLastBlock securely using mutex.
+
+    int GetLastBlock() {
+        std::lock_guard<std::mutex> lock(mtx);
+        return LastBlock;
+    }
+   
 
 private:
+    
     std::vector<std::string> SeedIpAddresses;
     std::vector<std::string> TestnetSeedIpAddresses;
 
-   
+ 
     
     void CheckConfigFiles()
     {
